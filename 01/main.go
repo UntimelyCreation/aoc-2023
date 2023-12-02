@@ -38,9 +38,9 @@ func calculate_calibration_values(path string, pattern string) int {
 	}
 	defer file.Close()
 
-	result := 0
-
 	scanner := bufio.NewScanner(file)
+
+	result := 0
 	for scanner.Scan() {
 		line := scanner.Text()
 		matches := []int{}
