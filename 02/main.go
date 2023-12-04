@@ -11,7 +11,7 @@ import (
 )
 
 func process_game_draws(path string) (int, int) {
-	pattern := `Game (?P<id>\d+): (.*)`
+	pattern := `Game (\d+): (.*)`
 	regex := regexp.MustCompile(pattern)
 
 	maximums := map[string]int{
