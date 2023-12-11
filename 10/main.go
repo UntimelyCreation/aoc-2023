@@ -33,8 +33,6 @@ var directions map[rune][][]int = map[rune][][]int{
 	'L': {{0, 1}, {-1, 0}},
 }
 
-var verticals []rune = []rune{'|', 'F', 'J', '7', 'L'}
-
 func process_pipe_map(path string) (int, int) {
 	file, err := os.ReadFile(path)
 	if err != nil {
