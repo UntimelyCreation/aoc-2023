@@ -100,6 +100,6 @@ func simulateBeamsAndMirrors(path string) (int, int) {
 }
 
 func main() {
-	energized, max_energized := simulateBeamsAndMirrors("16/input.txt")
-	fmt.Print("Part 1 solution: ", energized, "\nPart 2 solution: ", max_energized, "\n")
+	energized, maxEnergized := simulateBeamsAndMirrors("16/input.txt")
+	fmt.Print("Part 1 solution: ", energized, "\nPart 2 solution: ", maxEnergized, "\n")
 }
