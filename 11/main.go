@@ -7,13 +7,24 @@ import (
 	"os"
 	"slices"
 	"strings"
+
+	"github.com/UntimelyCreation/aoc-2023-go/pkg/grid"
 )
 
-func get_expanded_rows(image [][]rune) []int {
+func getExpandedRows(image grid.Grid[rune]) []int {
 	indices := []int{}
 
-	for i, row := range image {
-		if !slices.Contains(row, '#') {
+	xMin, xMax := image.XRange()
+	yMin, yMax := image.YRange()
+
+	for i := xMin; i <= xMax; i++ {
+		isEmpty := true
+		for j := yMin; j <= yMax; j++ {
+			if image[grid.Position{Row: i, Col: j}] == '#' {
+				isEmpty = false
+			}
+		}
+		if isEmpty {
 			indices = append(indices, i)
 		}
 	}
@@ -21,52 +32,43 @@ func get_expanded_rows(image [][]rune) []int {
 	return indices
 }
 
-func transpose(image [][]rune) [][]rune {
-	x, y := len(image[0]), len(image)
-	transposed := make([][]rune, x)
-	for i := range transposed {
-		transposed[i] = make([]rune, y)
-	}
-	for i := 0; i < x; i++ {
-		for j := 0; j < y; j++ {
-			transposed[i][j] = image[j][i]
-		}
-	}
-	return transposed
-}
-
-func process_galaxy_image(path string, expansion_factor int) int {
+func processGalaxyImage(path string, expansionFactor int) int {
 	file, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	image_raw := strings.Split(strings.Trim(string(file), "\n"), "\n")
-	image := [][]rune{}
-	for _, row := range image_raw {
-		image = append(image, []rune(row))
+	imageRaw := strings.Split(strings.Trim(string(file), "\n"), "\n")
+	image := grid.Grid[rune]{}
+	for row, line := range imageRaw {
+		for col, r := range line {
+			image[grid.Position{Row: row, Col: col}] = r
+		}
 	}
 
-	expanded_rows := get_expanded_rows(image)
-	expanded_cols := get_expanded_rows(transpose(image))
+	expandedRows := getExpandedRows(image)
+	expandedCols := getExpandedRows(image.Transpose())
 
 	galaxies := [][]int{}
-	for i, row := range image {
-		for j := range row {
-			if image[i][j] == '#' {
-				k, x := 0, 0
+	xMin, xMax := image.XRange()
+	yMin, yMax := image.YRange()
+
+	for i := xMin; i <= xMax; i++ {
+		for j := yMin; j <= yMax; j++ {
+			if image[grid.Position{Row: i, Col: j}] == '#' {
+				k, x := xMin, xMin
 				for k < i {
-					if slices.Contains(expanded_rows, k) {
-						x += expansion_factor
+					if slices.Contains(expandedRows, k) {
+						x += expansionFactor
 					} else {
 						x++
 					}
 					k++
 				}
-				l, y := 0, 0
+				l, y := yMin, yMin
 				for l < j {
-					if slices.Contains(expanded_cols, l) {
-						y += expansion_factor
+					if slices.Contains(expandedCols, l) {
+						y += expansionFactor
 					} else {
 						y++
 					}
@@ -77,21 +79,21 @@ func process_galaxy_image(path string, expansion_factor int) int {
 		}
 	}
 
-	shortest_paths_sum := 0
+	shortestPathsSum := 0
 
 	for i := range galaxies {
 		for j := i + 1; j < len(galaxies); j++ {
 			a, b := galaxies[i][0], galaxies[i][1]
 			c, d := galaxies[j][0], galaxies[j][1]
-			shortest_paths_sum += int(math.Abs(float64(c-a)) + math.Abs(float64(d-b)))
+			shortestPathsSum += int(math.Abs(float64(c-a)) + math.Abs(float64(d-b)))
 		}
 	}
 
-	return shortest_paths_sum
+	return shortestPathsSum
 }
 
 func main() {
-	shortest_paths_sum_1 := process_galaxy_image("11/input.txt", 2)
-	shortest_paths_sum_2 := process_galaxy_image("11/input.txt", 1000000)
-	fmt.Print("Part 1 solution: ", shortest_paths_sum_1, "\nPart 2 solution: ", shortest_paths_sum_2, "\n")
+	shortestPathsSum1 := processGalaxyImage("11/input.txt", 2)
+	shortestPathsSum2 := processGalaxyImage("11/input.txt", 1000000)
+	fmt.Print("Part 1 solution: ", shortestPathsSum1, "\nPart 2 solution: ", shortestPathsSum2, "\n")
 }

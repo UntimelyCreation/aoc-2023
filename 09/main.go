@@ -6,9 +6,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/UntimelyCreation/aoc-2023-go/pkg/utils"
 )
 
-func is_zeroes(slice []int) bool {
+func isZeroes(slice []int) bool {
 	for _, val := range slice {
 		if val != 0 {
 			return false
@@ -17,51 +19,40 @@ func is_zeroes(slice []int) bool {
 	return true
 }
 
-func last(slice []int) int {
-	return slice[len(slice)-1]
-}
-
-func reverse(slice []string) []string {
-	for i, j := 0, len(slice)-1; i < j; i, j = i+1, j-1 {
-		slice[i], slice[j] = slice[j], slice[i]
-	}
-	return slice
-}
-
-func calc_prediction_sum(path string, backwards bool) int {
+func calcPredictionSum(path string, backwards bool) int {
 	file, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	hists_raw := strings.Split(strings.Trim(string(file), "\n"), "\n")
+	histsRaw := strings.Split(strings.Trim(string(file), "\n"), "\n")
 	hists := [][]int{}
-	for _, raws := range hists_raw {
-		temp_hist := []int{}
+	for _, raws := range histsRaw {
+		tempHist := []int{}
 
 		fields := strings.Fields(raws)
 		if backwards {
-			fields = reverse(fields)
+			fields = utils.Reverse(fields)
 		}
 		for _, raw := range fields {
 			val, _ := strconv.Atoi(raw)
-			temp_hist = append(temp_hist, val)
+			tempHist = append(tempHist, val)
 		}
-		hists = append(hists, temp_hist)
+		hists = append(hists, tempHist)
 	}
 
-	prediction_sum := 0
+	predictionSum := 0
 	for _, hist := range hists {
 		derivs := [][]int{}
 		derivs = append(derivs, hist)
 
 		i := 0
-		for !is_zeroes(derivs[i]) {
-			next_deriv := []int{}
+		for !isZeroes(derivs[i]) {
+			nextDeriv := []int{}
 			for j := 1; j < len(derivs[i]); j++ {
-				next_deriv = append(next_deriv, derivs[i][j]-derivs[i][j-1])
+				nextDeriv = append(nextDeriv, derivs[i][j]-derivs[i][j-1])
 			}
-			derivs = append(derivs, next_deriv)
+			derivs = append(derivs, nextDeriv)
 			i += 1
 		}
 
@@ -69,19 +60,19 @@ func calc_prediction_sum(path string, backwards bool) int {
 		derivs[n-1] = append(derivs[n-1], 0)
 
 		for i := len(derivs) - 2; i >= 0; i-- {
-			prediction := last(derivs[i]) + last(derivs[i+1])
+			prediction := utils.Last(derivs[i]) + utils.Last(derivs[i+1])
 			derivs[i] = append(derivs[i], prediction)
 			if i == 0 {
-				prediction_sum += prediction
+				predictionSum += prediction
 			}
 		}
 	}
 
-	return prediction_sum
+	return predictionSum
 }
 
 func main() {
-	prediction_sum := calc_prediction_sum("09/input.txt", false)
-	prediction_sum_reverse := calc_prediction_sum("09/input.txt", true)
-	fmt.Print("Part 1 solution: ", prediction_sum, "\nPart 2 solution: ", prediction_sum_reverse, "\n")
+	predictionSum := calcPredictionSum("09/input.txt", false)
+	predictionSumReverse := calcPredictionSum("09/input.txt", true)
+	fmt.Print("Part 1 solution: ", predictionSum, "\nPart 2 solution: ", predictionSumReverse, "\n")
 }

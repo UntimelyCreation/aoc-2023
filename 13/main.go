@@ -20,7 +20,7 @@ func transpose(pattern []string) []string {
 	return transposed
 }
 
-func hamming_distance(a []string, b []string) int {
+func hammingDistance(a []string, b []string) int {
 	distance := 0
 
 	for i := range a {
@@ -34,7 +34,7 @@ func hamming_distance(a []string, b []string) int {
 	return distance
 }
 
-func get_reflection_line(pattern []string, smudged bool) int {
+func getReflectionLine(pattern []string, smudged bool) int {
 	for r := 1; r < len(pattern); r++ {
 		copied := make([]string, len(pattern))
 		copy(copied, pattern)
@@ -47,30 +47,30 @@ func get_reflection_line(pattern []string, smudged bool) int {
 		right = right[:min]
 		slices.Reverse(right)
 
-		if (!smudged && reflect.DeepEqual(left, right)) || (smudged && hamming_distance(left, right) == 1) {
+		if (!smudged && reflect.DeepEqual(left, right)) || (smudged && hammingDistance(left, right) == 1) {
 			return r
 		}
 	}
 	return -1
 }
 
-func process_ground_pattern(path string, smudged bool) int {
+func processGroundPattern(path string, smudged bool) int {
 	file, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	patterns_raw := strings.Split(strings.Trim(string(file), "\n"), "\n\n")
+	patternsRaw := strings.Split(strings.Trim(string(file), "\n"), "\n\n")
 	patterns := [][]string{}
-	for _, raw := range patterns_raw {
+	for _, raw := range patternsRaw {
 		pattern := strings.Split(raw, "\n")
 		patterns = append(patterns, pattern)
 	}
 
 	summary := 0
 	for _, pattern := range patterns {
-		rows := get_reflection_line(pattern, smudged)
-		cols := get_reflection_line(transpose(pattern), smudged)
+		rows := getReflectionLine(pattern, smudged)
+		cols := getReflectionLine(transpose(pattern), smudged)
 		if rows != -1 {
 			summary += 100 * rows
 		}
@@ -83,7 +83,7 @@ func process_ground_pattern(path string, smudged bool) int {
 }
 
 func main() {
-	summary_clean := process_ground_pattern("13/input.txt", false)
-	summary_smudged := process_ground_pattern("13/input.txt", true)
-	fmt.Print("Part 1 solution: ", summary_clean, "\nPart 2 solution: ", summary_smudged, "\n")
+	summaryClean := processGroundPattern("13/input.txt", false)
+	summarySmudged := processGroundPattern("13/input.txt", true)
+	fmt.Print("Part 1 solution: ", summaryClean, "\nPart 2 solution: ", summarySmudged, "\n")
 }

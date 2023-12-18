@@ -5,104 +5,91 @@ import (
 	"log"
 	"os"
 	"strings"
+
+	"github.com/UntimelyCreation/aoc-2023-go/pkg/grid"
+	aq "github.com/emirpasic/gods/queues/arrayqueue"
 )
 
-type Queue [][]int
-
-func (q *Queue) IsEmpty() bool {
-	return len(*q) == 0
+type QueueEntry struct {
+	position grid.Position
+	distance int
 }
 
-func (q *Queue) Push(slice []int) {
-	*q = append(*q, slice)
+var pipeDirs map[rune][]grid.Direction = map[rune][]grid.Direction{
+	'|': {grid.Up, grid.Down},
+	'-': {grid.Left, grid.Right},
+	'F': {grid.Right, grid.Down},
+	'7': {grid.Left, grid.Down},
+	'J': {grid.Left, grid.Up},
+	'L': {grid.Right, grid.Up},
 }
 
-func (q *Queue) Pop() []int {
-	last := (*q)[0]
-	*q = (*q)[1:]
-
-	return last
-}
-
-var directions map[rune][][]int = map[rune][][]int{
-	'|': {{1, 0}, {-1, 0}},
-	'-': {{0, 1}, {0, -1}},
-	'F': {{0, 1}, {1, 0}},
-	'7': {{0, -1}, {1, 0}},
-	'J': {{0, -1}, {-1, 0}},
-	'L': {{0, 1}, {-1, 0}},
-}
-
-func process_pipe_map(path string) (int, int) {
+func processPipeMap(path string) (int, int) {
 	file, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	pipes_raw := strings.Split(strings.Trim(string(file), "\n"), "\n")
-	pipes := [][]rune{}
-	for _, line := range pipes_raw {
-		pipes = append(pipes, []rune(line))
+	pipesRaw := strings.Split(strings.Trim(string(file), "\n"), "\n")
+	pipes := grid.Grid[rune]{}
+	for row, line := range pipesRaw {
+		for col, r := range line {
+			pipes[grid.Position{Row: row, Col: col}] = r
+		}
 	}
-	start := []int{}
-start:
-	for i := range pipes {
-		for j := range pipes[i] {
-			if pipes[i][j] == 'S' {
-				start = []int{i, j}
-				// HARDCODED: Replace S with corresponding pipe symbol in your personal input
-				pipes[i][j] = 'J'
-				// pipes[i][j] = '7'
-				break start
+
+	start := grid.Position{}
+	for k, v := range pipes {
+		if v == 'S' {
+			start = k
+			// HARDCODED: Replace S with corresponding pipe symbol in personal input
+			pipes[k] = 'J'
+			// pipes[k] = '7'
+		}
+	}
+
+	visited := grid.Grid[bool]{}
+	for k := range pipes {
+		visited[k] = false
+	}
+	queue := aq.New()
+	queue.Enqueue(QueueEntry{position: start, distance: 0})
+	visited[start] = true
+	furthestDist := 0
+
+	for !queue.Empty() {
+		qe, _ := queue.Dequeue()
+
+		position, dist := qe.(QueueEntry).position, qe.(QueueEntry).distance
+		furthestDist = max(furthestDist, dist)
+
+		nextDirs := pipeDirs[pipes[position]]
+
+		for _, dir := range nextDirs {
+			newPosition := position.Move(dir)
+			if !visited[newPosition] {
+				visited[newPosition] = true
+				queue.Enqueue(QueueEntry{position: newPosition, distance: dist + 1})
 			}
 		}
 	}
 
-	visited := [][]bool{}
-	for range pipes {
-		temp := []bool{}
-		for range pipes[0] {
-			temp = append(temp, false)
-		}
-		visited = append(visited, temp)
-	}
-	queue := Queue{}
-	queue.Push([]int{start[0], start[1], 0})
-	visited[start[0]][start[1]] = true
-	furthest_dist := 0
-
-	for !queue.IsEmpty() {
-		curr := queue.Pop()
-
-		i, j, dist := curr[0], curr[1], curr[2]
-		furthest_dist = max(furthest_dist, dist)
-
-		next_dirs := directions[pipes[i][j]]
-
-		for _, coords := range next_dirs {
-			x, y := i+coords[0], j+coords[1]
-			if !visited[x][y] {
-				visited[x][y] = true
-				queue.Push([]int{x, y, dist + 1})
-			}
+	for k := range pipes {
+		if !visited[k] {
+			pipes[k] = '.'
 		}
 	}
 
-	for i := range pipes {
-		for j := range pipes[i] {
-			if !visited[i][j] {
-				pipes[i][j] = '.'
-			}
-		}
-	}
+	xMin, xMax := pipes.XRange()
+	yMin, yMax := pipes.YRange()
 
 	enclosed := 0
-	for _, row := range pipes {
+	for i := xMin; i <= xMax; i++ {
 		inside := 0
 
-		i := 0
-		for i < len(row) {
-			r := row[i]
+		j := yMin
+		for j <= yMax {
+			r := pipes[grid.Position{Row: i, Col: j}]
 
 			switch r {
 			case '|':
@@ -112,19 +99,19 @@ start:
 			case '7':
 				inside++
 			case 'F':
-				i++
-				for row[i] == '-' && row[i] != 'J' && row[i] != '7' {
-					i++
+				j++
+				for pipes[grid.Position{Row: i, Col: j}] == '-' && pipes[grid.Position{Row: i, Col: j}] != 'J' && pipes[grid.Position{Row: i, Col: j}] != '7' {
+					j++
 				}
-				if row[i] == 'J' {
+				if pipes[grid.Position{Row: i, Col: j}] == 'J' {
 					inside++
 				}
 			case 'L':
-				i++
-				for row[i] == '-' && row[i] != 'J' && row[i] != '7' {
-					i++
+				j++
+				for pipes[grid.Position{Row: i, Col: j}] == '-' && pipes[grid.Position{Row: i, Col: j}] != 'J' && pipes[grid.Position{Row: i, Col: j}] != '7' {
+					j++
 				}
-				if row[i] == '7' {
+				if pipes[grid.Position{Row: i, Col: j}] == '7' {
 					inside++
 				}
 			case '.':
@@ -133,14 +120,14 @@ start:
 				}
 			}
 
-			i++
+			j++
 		}
 	}
 
-	return furthest_dist, enclosed
+	return furthestDist, enclosed
 }
 
 func main() {
-	furthest_dist, enclosed := process_pipe_map("10/input.txt")
-	fmt.Print("Part 1 solution: ", furthest_dist, "\nPart 2 solution: ", enclosed, "\n")
+	furthestDist, enclosed := processPipeMap("10/input.txt")
+	fmt.Print("Part 1 solution: ", furthestDist, "\nPart 2 solution: ", enclosed, "\n")
 }

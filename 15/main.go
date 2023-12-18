@@ -8,8 +8,8 @@ import (
 )
 
 type Lens struct {
-	label        string
-	focal_length int
+	label       string
+	focalLength int
 }
 
 func hash(step string) int {
@@ -22,18 +22,18 @@ func hash(step string) int {
 	return curr
 }
 
-func restore_focusing_lenses(path string) (int, int) {
+func restoreFocusingLenses(path string) (int, int) {
 	file, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	sequence_raw := strings.Trim(string(file), "\n")
-	sequence := strings.Split(sequence_raw, ",")
+	sequenceRaw := strings.Trim(string(file), "\n")
+	sequence := strings.Split(sequenceRaw, ",")
 
-	sequence_hash_sum := 0
+	sequenceHashSum := 0
 	for _, step := range sequence {
-		sequence_hash_sum += hash(step)
+		sequenceHashSum += hash(step)
 	}
 
 	boxes := [256][]Lens{}
@@ -55,12 +55,12 @@ func restore_focusing_lenses(path string) (int, int) {
 
 		switch step[j] {
 		case '=':
-			focal_length := int(step[j+1] - '0')
+			focalLength := int(step[j+1] - '0')
 			if k < len(*box) {
-				(*box)[k].focal_length = focal_length
+				(*box)[k].focalLength = focalLength
 			}
 			if k == len(*box) {
-				*box = append(*box, Lens{label, focal_length})
+				*box = append(*box, Lens{label, focalLength})
 			}
 		case '-':
 			if k < len(*box) {
@@ -69,17 +69,17 @@ func restore_focusing_lenses(path string) (int, int) {
 		}
 	}
 
-	lenses_focusing_power := 0
+	lensesFocusingPower := 0
 	for i, box := range boxes {
 		for j := range box {
-			lenses_focusing_power += (i + 1) * (j + 1) * (box[j].focal_length)
+			lensesFocusingPower += (i + 1) * (j + 1) * (box[j].focalLength)
 		}
 	}
 
-	return sequence_hash_sum, lenses_focusing_power
+	return sequenceHashSum, lensesFocusingPower
 }
 
 func main() {
-	sequence_hash_sum, lenses_focusing_power := restore_focusing_lenses("15/input.txt")
-	fmt.Print("Part 1 solution: ", sequence_hash_sum, "\nPart 2 solution: ", lenses_focusing_power, "\n")
+	sequenceHashSum, lensesFocusingPower := restoreFocusingLenses("15/input.txt")
+	fmt.Print("Part 1 solution: ", sequenceHashSum, "\nPart 2 solution: ", lensesFocusingPower, "\n")
 }

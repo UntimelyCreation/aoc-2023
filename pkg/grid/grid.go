@@ -1,4 +1,6 @@
-package utils
+package grid
+
+import "fmt"
 
 type Direction int
 
@@ -76,18 +78,7 @@ func (pos Position) Move(dir Direction) Position {
 	return Position{Row: pos.Row + x, Col: pos.Col + y}
 }
 
-type Grid[T any] map[Position]*T
-
-func (g Grid[T]) Get(pos Position) *T {
-	if val, ok := g[pos]; ok {
-		return val
-	}
-	return nil
-}
-
-func (g Grid[T]) Set(pos Position, val T) {
-	g[pos] = &val
-}
+type Grid[T any] map[Position]T
 
 func (g Grid[T]) XRange() (int, int) {
 	xMin, xMax := 0, 0
@@ -111,4 +102,35 @@ func (g Grid[T]) Dimensions() (int, int) {
 		rows, cols = max(rows, pos.Row), max(cols, pos.Col)
 	}
 	return rows + 1, cols + 1
+}
+
+func (g Grid[T]) Transpose() Grid[T] {
+	transposedG := make(Grid[T])
+	for k, v := range g {
+		transposedG[Position{Row: k.Col, Col: k.Row}] = v
+	}
+	return transposedG
+}
+
+func (g Grid[T]) Rotate(r complex128) Grid[T] {
+	rotatedG := make(Grid[T])
+
+	for k, v := range g {
+		z := complex(float64(k.Row), float64(k.Col))
+		z *= r
+		rotatedG[Position{Row: int(real(z)), Col: int(imag(z))}] = v
+	}
+	return rotatedG
+}
+
+func (g Grid[T]) PrettyPrint() {
+	xMin, xMax := g.XRange()
+	yMin, yMax := g.YRange()
+
+	for i := xMin; i <= xMax; i++ {
+		for j := yMin; j <= yMax; j++ {
+			fmt.Print(g[Position{Row: i, Col: j}], " ")
+		}
+		fmt.Print("\n")
+	}
 }

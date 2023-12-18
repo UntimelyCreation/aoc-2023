@@ -15,7 +15,7 @@ type Symbol struct {
 	neighbors []int
 }
 
-func analyze_engine_schematic(path string) (int, int) {
+func analyzeEngineSchematic(path string) (int, int) {
 	file, err := os.Open(path)
 	if err != nil {
 		log.Fatal(err)
@@ -24,8 +24,8 @@ func analyze_engine_schematic(path string) (int, int) {
 
 	schematic := [][]rune{}
 	symbols := [][]*Symbol{}
-	part_numbers_sum := 0
-	gear_ratios_sum := 0
+	partNumbersSum := 0
+	gearRatiosSum := 0
 
 	scanner := bufio.NewScanner(file)
 
@@ -69,8 +69,8 @@ func analyze_engine_schematic(path string) (int, int) {
 				}
 				end := j
 
-				part_number, _ := strconv.Atoi(string(schematic[i][start:end]))
-				number_is_valid := false
+				partNumber, _ := strconv.Atoi(string(schematic[i][start:end]))
+				numberIsValid := false
 
 				for k := start; k < end; k++ {
 					for _, coords := range idxs {
@@ -80,9 +80,9 @@ func analyze_engine_schematic(path string) (int, int) {
 							for _, sym := range symbols[l] {
 								y := sym.col
 								if y == m {
-									number_is_valid = true
-									if !slices.Contains(sym.neighbors, part_number) {
-										sym.neighbors = append(sym.neighbors, part_number)
+									numberIsValid = true
+									if !slices.Contains(sym.neighbors, partNumber) {
+										sym.neighbors = append(sym.neighbors, partNumber)
 									}
 								}
 							}
@@ -90,8 +90,8 @@ func analyze_engine_schematic(path string) (int, int) {
 					}
 				}
 
-				if number_is_valid {
-					part_numbers_sum += part_number
+				if numberIsValid {
+					partNumbersSum += partNumber
 				}
 			}
 			j += 1
@@ -105,15 +105,15 @@ func analyze_engine_schematic(path string) (int, int) {
 				for _, num := range sym.neighbors {
 					ratio *= num
 				}
-				gear_ratios_sum += ratio
+				gearRatiosSum += ratio
 			}
 		}
 	}
 
-	return part_numbers_sum, gear_ratios_sum
+	return partNumbersSum, gearRatiosSum
 }
 
 func main() {
-	engine_parts_sum, gear_ratios_sum := analyze_engine_schematic("03/input.txt")
-	fmt.Print("Part 1 solution: ", engine_parts_sum, "\nPart 2 solution: ", gear_ratios_sum, "\n")
+	enginePartsSum, gearRatiosSum := analyzeEngineSchematic("03/input.txt")
+	fmt.Print("Part 1 solution: ", enginePartsSum, "\nPart 2 solution: ", gearRatiosSum, "\n")
 }

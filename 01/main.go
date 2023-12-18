@@ -8,7 +8,7 @@ import (
 	"regexp"
 )
 
-func calculate_calibration_values(path string, pattern string) int {
+func calculateCalibrationValues(path string, pattern string) int {
 	regex := regexp.MustCompile(pattern)
 
 	digits := map[string]int{
@@ -60,9 +60,9 @@ func calculate_calibration_values(path string, pattern string) int {
 }
 
 func main() {
-	calibration_sum_1 := calculate_calibration_values("01/input.txt", `^\d`)
-	fmt.Print("Part 1 solution: ", calibration_sum_1, "\n")
+	calibrationSum1 := calculateCalibrationValues("01/input.txt", `^\d`)
+	fmt.Print("Part 1 solution: ", calibrationSum1, "\n")
 
-	calibration_sum_2 := calculate_calibration_values("01/input.txt", `^one|^two|^three|^four|^five|^six|^seven|^eight|^nine|^\d`)
-	fmt.Print("Part 2 solution: ", calibration_sum_2, "\n")
+	calibrationSum2 := calculateCalibrationValues("01/input.txt", `^one|^two|^three|^four|^five|^six|^seven|^eight|^nine|^\d`)
+	fmt.Print("Part 2 solution: ", calibrationSum2, "\n")
 }

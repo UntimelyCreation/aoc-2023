@@ -6,20 +6,20 @@ import (
 	"os"
 	"strings"
 
-	"github.com/UntimelyCreation/aoc-2023-go/utils"
+	"github.com/UntimelyCreation/aoc-2023-go/pkg/grid"
 	pq "github.com/emirpasic/gods/queues/priorityqueue"
 )
 
 type QueueEntry struct {
-	position  utils.Position
-	direction utils.Direction
+	position  grid.Position
+	direction grid.Direction
 	streak    int
 	heatLoss  int
 }
 
 type CacheEntry struct {
-	position  utils.Position
-	direction utils.Direction
+	position  grid.Position
+	direction grid.Direction
 	streak    int
 }
 
@@ -27,25 +27,11 @@ func compareHeatLoss(a, b any) int {
 	return a.(QueueEntry).heatLoss - b.(QueueEntry).heatLoss
 }
 
-var dirToDirs map[int][]int = map[int][]int{
-	0: {0, 1, 3},
-	1: {1, 2, 0},
-	2: {2, 3, 1},
-	3: {3, 0, 2},
-}
-
-var dirToCoords map[int][]int = map[int][]int{
-	0: {-1, 0},
-	1: {0, 1},
-	2: {1, 0},
-	3: {0, -1},
-}
-
-func dijkstra(blocks utils.Grid[int], start utils.Position, target utils.Position, minStreak, maxStreak int) int {
+func dijkstra(blocks grid.Grid[int], start grid.Position, target grid.Position, minStreak, maxStreak int) int {
 	queue := pq.NewWith(compareHeatLoss)
 	queue.Enqueue(QueueEntry{
 		position:  start,
-		direction: utils.Right,
+		direction: grid.Right,
 		streak:    1,
 		heatLoss:  0,
 	})
@@ -60,7 +46,7 @@ func dijkstra(blocks utils.Grid[int], start utils.Position, target utils.Positio
 			continue
 		}
 
-		heatLoss := qe.heatLoss + *blocks[qe.position]
+		heatLoss := qe.heatLoss + blocks[qe.position]
 
 		// TODO: Algorithm works for real input but not for second test input
 		// Should add check for qe.streak >= minStreak as well
@@ -81,7 +67,7 @@ func dijkstra(blocks utils.Grid[int], start utils.Position, target utils.Positio
 		cache[ce] = heatLoss
 
 		if qe.streak >= minStreak {
-			left := utils.TurnLeft(qe.direction)
+			left := grid.TurnLeft(qe.direction)
 			queue.Enqueue(QueueEntry{
 				position:  qe.position.Move(left),
 				direction: left,
@@ -89,7 +75,7 @@ func dijkstra(blocks utils.Grid[int], start utils.Position, target utils.Positio
 				heatLoss:  heatLoss,
 			})
 
-			right := utils.TurnRight(qe.direction)
+			right := grid.TurnRight(qe.direction)
 			queue.Enqueue(QueueEntry{
 				position:  qe.position.Move(right),
 				direction: right,
@@ -117,17 +103,16 @@ func navigateCrucible(path string) (int, int) {
 	}
 
 	blocksRaw := strings.Split(strings.Trim(string(file), "\n"), "\n")
-	blocks := utils.Grid[int]{}
+	blocks := grid.Grid[int]{}
 	for row, line := range blocksRaw {
 		for col, r := range line {
-			val := int(r - '0')
-			blocks[utils.Position{Row: row, Col: col}] = &val
+			blocks[grid.Position{Row: row, Col: col}] = int(r - '0')
 		}
 	}
 	rows, cols := blocks.Dimensions()
 
-	minHeatLoss1 := dijkstra(blocks, utils.Position{Row: 0, Col: 1}, utils.Position{Row: rows - 1, Col: cols - 1}, 0, 3)
-	minHeatLoss2 := dijkstra(blocks, utils.Position{Row: 0, Col: 1}, utils.Position{Row: rows - 1, Col: cols - 1}, 4, 10)
+	minHeatLoss1 := dijkstra(blocks, grid.Position{Row: 0, Col: 1}, grid.Position{Row: rows - 1, Col: cols - 1}, 0, 3)
+	minHeatLoss2 := dijkstra(blocks, grid.Position{Row: 0, Col: 1}, grid.Position{Row: rows - 1, Col: cols - 1}, 4, 10)
 
 	return minHeatLoss1, minHeatLoss2
 }

@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func process_scratchcard_game(path string) (int, int) {
+func processScratchcardGame(path string) (int, int) {
 	pattern := `Card\s+\d+: (.*)`
 	regex := regexp.MustCompile(pattern)
 
@@ -29,51 +29,51 @@ func process_scratchcard_game(path string) (int, int) {
 		scratchcards[i] = 1
 	}
 
-	total_scratchcard_points := 0
-	scratchcard_count := 0
+	totalPoints := 0
+	scratchcardCount := 0
 
-	line_num := 0
+	lineNum := 0
 	for scanner.Scan() {
 		line := scanner.Text()
 
 		matches := regex.FindAllStringSubmatch(line, -1)
 
 		numbers := strings.Split(matches[0][1], " | ")
-		winning_nums_raw := strings.Fields(numbers[0])
-		winning_nums := []int{}
-		chosen_nums_raw := strings.Fields(numbers[1])
+		winningNumsRaw := strings.Fields(numbers[0])
+		winningNums := []int{}
+		chosenNumsRaw := strings.Fields(numbers[1])
 
-		for i := range winning_nums_raw {
-			num, _ := strconv.Atoi(winning_nums_raw[i])
-			winning_nums = append(winning_nums, num)
+		for i := range winningNumsRaw {
+			num, _ := strconv.Atoi(winningNumsRaw[i])
+			winningNums = append(winningNums, num)
 		}
 
 		winners := 0
-		for i := range chosen_nums_raw {
-			num, _ := strconv.Atoi(chosen_nums_raw[i])
-			if slices.Contains(winning_nums, num) {
+		for i := range chosenNumsRaw {
+			num, _ := strconv.Atoi(chosenNumsRaw[i])
+			if slices.Contains(winningNums, num) {
 				winners += 1
 			}
 		}
 
-		copies := scratchcards[line_num]
-		scratchcard_count += copies
+		copies := scratchcards[lineNum]
+		scratchcardCount += copies
 
 		if winners > 0 {
-			total_scratchcard_points += int(math.Pow(2, float64(winners-1)))
+			totalPoints += int(math.Pow(2, float64(winners-1)))
 
-			for j := line_num + 1; j < line_num+winners+1; j++ {
+			for j := lineNum + 1; j < lineNum+winners+1; j++ {
 				scratchcards[j] += copies
 			}
 		}
 
-		line_num += 1
+		lineNum += 1
 	}
 
-	return total_scratchcard_points, scratchcard_count
+	return totalPoints, scratchcardCount
 }
 
 func main() {
-	total_scratchcard_points, scratchcard_count := process_scratchcard_game("04/input.txt")
-	fmt.Print("Part 1 solution: ", total_scratchcard_points, "\nPart 2 solution: ", scratchcard_count, "\n")
+	totalPoints, scratchcardCount := processScratchcardGame("04/input.txt")
+	fmt.Print("Part 1 solution: ", totalPoints, "\nPart 2 solution: ", scratchcardCount, "\n")
 }

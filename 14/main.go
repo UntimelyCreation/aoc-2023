@@ -4,75 +4,56 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"reflect"
 	"strings"
+
+	"github.com/UntimelyCreation/aoc-2023-go/pkg/grid"
 )
 
-func get_string_key(platform [][]rune) string {
-	key := ""
-	for _, row := range platform {
-		key += string(row)
-	}
-	return key
+type CacheEntry struct {
+	grid  grid.Grid[rune]
+	start int
 }
 
-func get_key_by_value(m map[string]int, value int) (key string, ok bool) {
-	for k, v := range m {
-		if v == value {
-			key = k
-			ok = true
-			return
+func searchCacheByGrid(cache []CacheEntry, platform grid.Grid[rune]) (start int, ok bool) {
+	for _, ce := range cache {
+		if reflect.DeepEqual(ce.grid, platform) {
+			start, ok = ce.start, true
 		}
 	}
-	return
+	return start, ok
 }
 
-func transpose(platform [][]rune) [][]rune {
-	x, y := len(platform[0]), len(platform)
-	transposed := make([][]rune, x)
-	for i := range transposed {
-		transposed[i] = make([]rune, y)
-	}
-	for i := 0; i < x; i++ {
-		for j := 0; j < y; j++ {
-			transposed[i][j] = platform[j][i]
+func searchCacheByStart(cache []CacheEntry, start int) (grid grid.Grid[rune], ok bool) {
+	for _, ce := range cache {
+		if ce.start == start {
+			grid, ok = ce.grid, true
 		}
 	}
-	return transposed
+	return grid, ok
 }
 
-func rotate_clockwise(platform *[][]rune) {
-	n := len(*platform)
+func shift(platform grid.Grid[rune]) grid.Grid[rune] {
+	shiftedPlatform := platform.Transpose()
 
-	for i := 0; i < n/2; i++ {
-		for j := i; j < n-i-1; j++ {
-			temp := (*platform)[i][j]
-			(*platform)[i][j] = (*platform)[n-1-j][i]
-			(*platform)[n-1-j][i] = (*platform)[n-1-i][n-1-j]
-			(*platform)[n-1-i][n-1-j] = (*platform)[j][n-1-i]
-			(*platform)[j][n-1-i] = temp
-		}
-	}
-}
+	xMin, xMax := shiftedPlatform.XRange()
+	yMin, yMax := shiftedPlatform.YRange()
 
-func shift_platform(platform *[][]rune) {
-	shifted_platform := transpose(*platform)
-
-	for _, row := range shifted_platform {
-		j := 0
-		for j < len(row) {
-			for j < len(row) && row[j] != '.' {
+	for i := xMin; i <= xMax; i++ {
+		j := yMin
+		for j <= yMax {
+			for j <= yMax && shiftedPlatform[grid.Position{Row: i, Col: j}] != '.' {
 				j++
 			}
-			k := j + 1
-			save := k
-			for k < len(row) && row[k] == '.' {
+			k, temp := j+1, j+1
+			for k <= yMax && shiftedPlatform[grid.Position{Row: i, Col: k}] == '.' {
 				k++
 			}
-			if k < len(row) {
-				switch row[k] {
+			if k <= yMax {
+				switch shiftedPlatform[grid.Position{Row: i, Col: k}] {
 				case 'O':
-					row[j], row[k] = 'O', '.'
-					j = save
+					shiftedPlatform[grid.Position{Row: i, Col: j}], shiftedPlatform[grid.Position{Row: i, Col: k}] = 'O', '.'
+					j = temp
 				case '#':
 					j = k
 				}
@@ -82,87 +63,62 @@ func shift_platform(platform *[][]rune) {
 		}
 	}
 
-	(*platform) = transpose(shifted_platform)
+	return shiftedPlatform.Transpose()
 }
 
-func cycle_platform(platform *[][]rune) (int, int, map[string]int) {
-	cache := map[string]int{}
+func cycle(platform grid.Grid[rune]) (int, int, []CacheEntry) {
+	cache := []CacheEntry{}
 
 	i := 1
 	for {
 		for j := 0; j < 4; j++ {
-			shift_platform(platform)
-			rotate_clockwise(platform)
+			platform = shift(platform)
+			platform = platform.Rotate(complex(0, -1))
 		}
-		start, cached := cache[get_string_key(*platform)]
-		if cached {
+		if start, cached := searchCacheByGrid(cache, platform); cached {
 			return start, i - start, cache
 		}
-		cache[get_string_key(*platform)] = i
+		cache = append(cache, CacheEntry{grid: platform, start: i})
 		i++
 	}
 }
 
-func calculate_load(platform [][]rune) int {
+func getLoad(platform grid.Grid[rune]) int {
 	load := 0
-	rows := len(platform)
+	rows, _ := platform.Dimensions()
 
-	for i, row := range platform {
-		row_load := 0
-		for _, r := range row {
-			if r == 'O' {
-				row_load++
-			}
+	for k, v := range platform {
+		if v == 'O' {
+			load += rows - k.Row
 		}
-		load += row_load * (rows - i)
 	}
 
 	return load
 }
 
-func calculate_shifted_support_beam_load(path string) int {
+func calcSupportBeamLoad(path string, cycles int) (int, int) {
 	file, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	platform_raw := strings.Split(strings.Trim(string(file), "\n"), "\n")
-	platform := [][]rune{}
-	for _, row := range platform_raw {
-		platform = append(platform, []rune(row))
+	platformRaw := strings.Split(strings.Trim(string(file), "\n"), "\n")
+	platform := grid.Grid[rune]{}
+	for row, line := range platformRaw {
+		for col, r := range line {
+			platform[grid.Position{Row: row, Col: col}] = r
+		}
 	}
 
-	shift_platform(&platform)
+	shiftedPlatform := shift(platform)
 
-	return calculate_load(platform)
-}
+	start, period, cache := cycle(platform)
+	cycledPlatform, _ := searchCacheByStart(cache, start+(cycles-start)%period)
 
-func calculate_cycled_support_beam_load(path string, cycles int) int {
-	file, err := os.ReadFile(path)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	platform_raw := strings.Split(strings.Trim(string(file), "\n"), "\n")
-	platform := [][]rune{}
-	for _, row := range platform_raw {
-		platform = append(platform, []rune(row))
-	}
-
-	start, period, cache := cycle_platform(&platform)
-	shifted_platform_str, _ := get_key_by_value(cache, start+(cycles-start)%period)
-
-	cols := len(platform[0])
-	shifted_platform := [][]rune{}
-	for i := cols; i <= len(shifted_platform_str); i += cols {
-		shifted_platform = append(shifted_platform, []rune(shifted_platform_str[i-cols:i]))
-	}
-
-	return calculate_load(shifted_platform)
+	return getLoad(shiftedPlatform), getLoad(cycledPlatform)
 }
 
 func main() {
-	total_shifted_load := calculate_shifted_support_beam_load("14/input.txt")
-	total_cycled_load := calculate_cycled_support_beam_load("14/input.txt", 1000000000)
-	fmt.Print("Part 1 solution: ", total_shifted_load, "\nPart 2 solution: ", total_cycled_load, "\n")
+	totalShiftedLoad, totalCycledLoad := calcSupportBeamLoad("14/input.txt", 1000000000)
+	fmt.Print("Part 1 solution: ", totalShiftedLoad, "\nPart 2 solution: ", totalCycledLoad, "\n")
 }

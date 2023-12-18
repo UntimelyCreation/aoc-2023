@@ -6,104 +6,95 @@ import (
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/UntimelyCreation/aoc-2023-go/pkg/utils"
 )
 
-func gcd(a int, b int) int {
-	for b != 0 {
-		a, b = b, a%b
-	}
-	return a
-}
-
-func lcm(a int, b int) int {
-	return int(a * b / gcd(a, b))
-}
-
-func calc_min_lr_steps_1(path string) int {
+func calcMinSteps1(path string) int {
 	file, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	directions_raw := strings.Split(strings.Trim(string(file), "\n"), "\n\n")
-	instructions := directions_raw[0]
+	directionsRaw := strings.Split(strings.Trim(string(file), "\n"), "\n\n")
+	instructions := directionsRaw[0]
 
-	nodes_raw := strings.Split(directions_raw[1], "\n")
-	nodes_map := map[string][]string{}
+	nodesRaw := strings.Split(directionsRaw[1], "\n")
+	nodes := map[string][]string{}
 
 	pattern := `([A-Z0-9]{3}) = \(([A-Z0-9]{3}), ([A-Z0-9]{3})\)`
 	regex := regexp.MustCompile(pattern)
-	for _, node := range nodes_raw {
+	for _, node := range nodesRaw {
 		matches := regex.FindAllStringSubmatch(node, -1)
-		nodes_map[matches[0][1]] = []string{matches[0][2], matches[0][3]}
+		nodes[matches[0][1]] = []string{matches[0][2], matches[0][3]}
 	}
 
-	min_steps := 0
+	minSteps := 0
 	curr := "AAA"
 	for curr != "ZZZ" {
 		for _, ch := range instructions {
 			switch ch {
 			case 'L':
-				curr = nodes_map[curr][0]
+				curr = nodes[curr][0]
 			case 'R':
-				curr = nodes_map[curr][1]
+				curr = nodes[curr][1]
 			}
-			min_steps += 1
+			minSteps += 1
 		}
 	}
 
-	return min_steps
+	return minSteps
 }
 
-func calc_min_lr_steps_2(path string) int {
+func calcMinSteps2(path string) int {
 	file, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	directions_raw := strings.Split(strings.Trim(string(file), "\n"), "\n\n")
-	instructions := directions_raw[0]
+	directionsRaw := strings.Split(strings.Trim(string(file), "\n"), "\n\n")
+	instructions := directionsRaw[0]
 
-	nodes_raw := strings.Split(directions_raw[1], "\n")
-	nodes_map := map[string][]string{}
+	nodesRaw := strings.Split(directionsRaw[1], "\n")
+	nodes := map[string][]string{}
 
 	pattern := `([A-Z0-9]{3}) = \(([A-Z0-9]{3}), ([A-Z0-9]{3})\)`
 	regex := regexp.MustCompile(pattern)
-	for _, node := range nodes_raw {
+	for _, node := range nodesRaw {
 		matches := regex.FindAllStringSubmatch(node, -1)
-		nodes_map[matches[0][1]] = []string{matches[0][2], matches[0][3]}
+		nodes[matches[0][1]] = []string{matches[0][2], matches[0][3]}
 	}
 
-	start_steps := []int{}
-	for node := range nodes_map {
+	startSteps := []int{}
+	for node := range nodes {
 		if node[2] == 'A' {
 			curr := node
-			min_steps := 0
+			minSteps := 0
 			for curr[2] != 'Z' {
 				for _, ch := range instructions {
 					switch ch {
 					case 'L':
-						curr = nodes_map[curr][0]
+						curr = nodes[curr][0]
 					case 'R':
-						curr = nodes_map[curr][1]
+						curr = nodes[curr][1]
 					}
-					min_steps += 1
+					minSteps += 1
 				}
 			}
-			start_steps = append(start_steps, min_steps)
+			startSteps = append(startSteps, minSteps)
 		}
 	}
 
-	min_steps := 1
-	for _, count := range start_steps {
-		min_steps = lcm(min_steps, count)
+	minSteps := 1
+	for _, count := range startSteps {
+		minSteps = utils.Lcm(minSteps, count)
 	}
 
-	return min_steps
+	return minSteps
 }
 
 func main() {
-	min_steps_1 := calc_min_lr_steps_1("08/input.txt")
-	min_steps_2 := calc_min_lr_steps_2("08/input.txt")
-	fmt.Print("Part 1 solution: ", min_steps_1, "\nPart 2 solution: ", min_steps_2, "\n")
+	minSteps1 := calcMinSteps1("08/input.txt")
+	minSteps2 := calcMinSteps2("08/input.txt")
+	fmt.Print("Part 1 solution: ", minSteps1, "\nPart 2 solution: ", minSteps2, "\n")
 }
