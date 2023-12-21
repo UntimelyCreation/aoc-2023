@@ -1,13 +1,17 @@
 package utils
 
-func Gcd(a int, b int) int {
+func Mod(a, b int) int {
+	return (a%b + b) % b
+}
+
+func Gcd(a, b int) int {
 	for b != 0 {
 		a, b = b, a%b
 	}
 	return a
 }
 
-func Lcm(a int, b int) int {
+func Lcm(a, b int) int {
 	return int(a * b / Gcd(a, b))
 }
 
