@@ -11,8 +11,10 @@ import (
 )
 
 var (
-	modules  map[string]Module
-	messages *aq.Queue
+	modules       map[string]Module
+	moduleInputs  map[string][]string
+	moduleOutputs map[string][]string
+	messages      *aq.Queue
 )
 
 type Pulse int
@@ -22,14 +24,19 @@ const (
 	High
 )
 
+type Message struct {
+	sender   string
+	pulse    Pulse
+	receiver string
+}
+
 type Module interface {
 	Send(sender string, pulse Pulse)
 }
 
 type FlipFlop struct {
-	name         string
-	powered      bool
-	destinations []string
+	name    string
+	powered bool
 }
 
 func (ff *FlipFlop) Send(sender string, pulse Pulse) {
@@ -39,16 +46,15 @@ func (ff *FlipFlop) Send(sender string, pulse Pulse) {
 		if ff.powered {
 			newPulse = High
 		}
-		for _, dest := range ff.destinations {
+		for _, dest := range moduleOutputs[ff.name] {
 			messages.Enqueue(Message{ff.name, newPulse, dest})
 		}
 	}
 }
 
 type Conjunction struct {
-	name         string
-	mrp          map[string]Pulse
-	destinations []string
+	name string
+	mrp  map[string]Pulse
 }
 
 func (c *Conjunction) Send(sender string, pulse Pulse) {
@@ -60,18 +66,17 @@ func (c *Conjunction) Send(sender string, pulse Pulse) {
 			break
 		}
 	}
-	for _, dest := range c.destinations {
+	for _, dest := range moduleOutputs[c.name] {
 		messages.Enqueue(Message{c.name, newPulse, dest})
 	}
 }
 
 type Broadcaster struct {
-	name         string
-	destinations []string
+	name string
 }
 
 func (b *Broadcaster) Send(sender string, pulse Pulse) {
-	for _, dest := range b.destinations {
+	for _, dest := range moduleOutputs[b.name] {
 		messages.Enqueue(Message{b.name, pulse, dest})
 	}
 }
@@ -84,12 +89,6 @@ func (b *Button) Send(sender string, pulse Pulse) {
 	messages.Enqueue(Message{b.name, pulse, "broadcaster"})
 }
 
-type Message struct {
-	sender   string
-	pulse    Pulse
-	receiver string
-}
-
 func propagatePulses(path string, waitRxLow bool) int {
 	file, err := os.ReadFile(path)
 	if err != nil {
@@ -99,9 +98,8 @@ func propagatePulses(path string, waitRxLow bool) int {
 	modules = map[string]Module{
 		"button": &Button{name: "button"},
 	}
-
-	moduleConns := map[string][]string{}
-	cjs := []*Conjunction{}
+	moduleInputs = map[string][]string{}
+	moduleOutputs = map[string][]string{}
 
 	modulesRaw := strings.Split(strings.Trim(string(file), "\n"), "\n")
 	for _, line := range modulesRaw {
@@ -111,28 +109,29 @@ func propagatePulses(path string, waitRxLow bool) int {
 		dests := strings.Split(split[1], ", ")
 
 		if name == "broadcaster" {
-			modules[name] = &Broadcaster{name: split[0], destinations: dests}
+			modules[name] = &Broadcaster{name: split[0]}
 		} else {
 			prefix := name[0]
 			name = name[1:]
 			switch prefix {
 			case '%':
-				modules[name] = &FlipFlop{name: name, powered: false, destinations: dests}
+				modules[name] = &FlipFlop{name: name, powered: false}
 			case '&':
-				cj := &Conjunction{name: name, mrp: map[string]Pulse{}, destinations: dests}
-				modules[name] = cj
-				cjs = append(cjs, cj)
+				modules[name] = &Conjunction{name: name, mrp: map[string]Pulse{}}
 			}
 		}
 
 		for _, dest := range dests {
-			moduleConns[dest] = append(moduleConns[dest], name)
+			moduleInputs[dest] = append(moduleInputs[dest], name)
 		}
+		moduleOutputs[name] = dests
 	}
 
-	for _, cj := range cjs {
-		for _, name := range moduleConns[cj.name] {
-			cj.mrp[name] = Low
+	for _, module := range modules {
+		if cj, ok := module.(*Conjunction); ok {
+			for _, name := range moduleInputs[cj.name] {
+				cj.mrp[name] = Low
+			}
 		}
 	}
 
@@ -171,9 +170,11 @@ func propagatePulses(path string, waitRxLow bool) int {
 	var rxInput *Conjunction
 	firstHighPulses := map[string]int{}
 
-	for _, cj := range cjs {
-		if cj.name == rxInputName {
-			rxInput = cj
+	for _, module := range modules {
+		if cj, ok := module.(*Conjunction); ok {
+			if cj.name == rxInputName {
+				rxInput = cj
+			}
 		}
 	}
 
@@ -185,18 +186,19 @@ func propagatePulses(path string, waitRxLow bool) int {
 			qe, _ := messages.Dequeue()
 			msg := qe.(Message)
 
+			if msg.receiver == rxInputName && msg.pulse == High {
+				firstHighPulses[msg.sender] = i + 1
+			}
+
 			// Prevent crashing on non-existent dummy output node
 			if destModule := modules[msg.receiver]; destModule != nil {
 				destModule.Send(msg.sender, msg.pulse)
-			}
-
-			if msg.receiver == rxInputName && msg.pulse == High {
-				firstHighPulses[msg.sender] = i + 1
 			}
 		}
 
 		i++
 	}
+
 	minButtonPresses := 1
 	for _, count := range firstHighPulses {
 		minButtonPresses = utils.Lcm(minButtonPresses, count)
