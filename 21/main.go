@@ -128,6 +128,6 @@ func getGardenPlotCounts(path string) (int, int) {
 }
 
 func main() {
-	gardentPlotsCount, gardenPlotsCountInfinite := getGardenPlotCounts("21/input.txt")
-	fmt.Print("Part 1 solution: ", gardentPlotsCount, "\nPart 2 solution: ", gardenPlotsCountInfinite, "\n")
+	gardenPlotsCount, gardenPlotsCountInfinite := getGardenPlotCounts("21/input.txt")
+	fmt.Print("Part 1 solution: ", gardenPlotsCount, "\nPart 2 solution: ", gardenPlotsCountInfinite, "\n")
 }
