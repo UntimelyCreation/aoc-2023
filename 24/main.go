@@ -3,12 +3,13 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/UntimelyCreation/aoc-2023-go/pkg/space"
-	"gonum.org/v1/gonum/mat"
+	"github.com/UntimelyCreation/aoc-2023-go/pkg/utils"
 )
 
 const (
@@ -17,6 +18,17 @@ const (
 	rangeMin = 2e14
 	rangeMax = 4e14
 )
+
+func different(a, b float64) bool {
+	// Compensates for floating point precision errors
+	// Arbitrary threshold, chosen to make the solution work
+	return math.Abs(a-b) > 1
+}
+
+type Intersection struct {
+	position space.Position[float64]
+	time     float64
+}
 
 type Hailstone struct {
 	position, velocity space.Position[float64]
@@ -29,14 +41,14 @@ func (h Hailstone) get2DLineCoefficients() (float64, float64) {
 	return slope, intercept
 }
 
-func (h Hailstone) checkFuture(intersection space.Position[float64]) bool {
-	futureX := (intersection.X-h.position.X)/h.velocity.X > 0
-	futureY := (intersection.Y-h.position.Y)/h.velocity.Y > 0
+func (h Hailstone) checkFuture(intersection Intersection) bool {
+	futureX := utils.Sign(intersection.position.X-h.position.X) == utils.Sign(h.velocity.X)
+	futureY := utils.Sign(intersection.position.Y-h.position.Y) == utils.Sign(h.velocity.Y)
 
 	return futureX && futureY
 }
 
-func (h Hailstone) intersects2DInFuture(other Hailstone) (intersection space.Position[float64], ok bool) {
+func (h Hailstone) intersects2DInFuture(other Hailstone) (intersection Intersection, ok bool) {
 	hSlope, hIntercept := h.get2DLineCoefficients()
 	otherSlope, otherIntercept := other.get2DLineCoefficients()
 
@@ -46,8 +58,10 @@ func (h Hailstone) intersects2DInFuture(other Hailstone) (intersection space.Pos
 
 	interX := (otherIntercept - hIntercept) / (hSlope - otherSlope)
 	interY := hSlope*interX + hIntercept
+	interTime := (interX - h.position.X) / h.velocity.X
 
-	intersection = space.Position[float64]{X: interX, Y: interY, Z: 0}
+	interPos := space.Position[float64]{X: interX, Y: interY, Z: 0}
+	intersection = Intersection{position: interPos, time: interTime}
 
 	if h.checkFuture(intersection) && other.checkFuture(intersection) {
 		ok = true
@@ -56,7 +70,7 @@ func (h Hailstone) intersects2DInFuture(other Hailstone) (intersection space.Pos
 	return intersection, ok
 }
 
-func getHailstoneIntersections(path string, iterations int) (int, int) {
+func getHailstoneIntersections(path string) (int, int) {
 	file, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatal(err)
@@ -84,61 +98,86 @@ func getHailstoneIntersections(path string, iterations int) (int, int) {
 		})
 	}
 
+	velXMin, velXMax := math.MaxFloat64, float64(0)
+	velYMin, velYMax := math.MaxFloat64, float64(0)
+	velZMin, velZMax := math.MaxFloat64, float64(0)
 	validIntersections := 0
 	for i, h := range hailstones {
+
+		velXMin = min(velXMin, h.velocity.X)
+		velXMax = max(velXMax, h.velocity.X)
+		velYMin = min(velYMin, h.velocity.Y)
+		velYMax = max(velYMax, h.velocity.Y)
+		velZMin = min(velZMin, h.velocity.Z)
+		velZMax = max(velZMax, h.velocity.Z)
+
 		for _, other := range hailstones[i+1:] {
 			if intersection, ok := h.intersects2DInFuture(other); ok {
-				if intersection.X >= rangeMin &&
-					intersection.X <= rangeMax &&
-					intersection.Y >= rangeMin &&
-					intersection.Y <= rangeMax {
+				if intersection.position.X >= rangeMin &&
+					intersection.position.X <= rangeMax &&
+					intersection.position.Y >= rangeMin &&
+					intersection.position.Y <= rangeMax {
 					validIntersections++
 				}
 			}
 		}
 	}
 
-	// Linear algebra: cross-product (posHi - posRock) ^ (velHi - velRock) = 0, where Hi is the ith hailstone
-	// There are 6 unknowns, so 6 equations are formed by equating for different hailstones, e.g. i with i+1 and i with i+2
-	rockPosSumTotal := float64(0)
-	for i := 0; i < iterations; i++ {
+	rockPosSum := 0
+	// -2 and +2 are for the test input
+findRockPosition:
+	for vX := velXMin - 2; vX <= velXMax+2; vX++ {
+	calcInter2D:
+		for vY := velYMin - 2; vY <= velYMax+2; vY++ {
+		calcInter3D:
+			for vZ := velZMin - 2; vZ <= velZMax+2; vZ++ {
+				adjustedHailstones := []Hailstone{}
+				for _, h := range hailstones[:5] {
+					adjustedHailstones = append(adjustedHailstones, Hailstone{
+						position: h.position,
+						velocity: space.Position[float64]{
+							X: h.velocity.X - vX,
+							Y: h.velocity.Y - vY,
+							Z: h.velocity.Z - vZ,
+						},
+					})
+				}
 
-		h1, h2, h3 := hailstones[i], hailstones[i+1], hailstones[i+2]
+				intersections := []Intersection{}
+				for _, h := range adjustedHailstones[1:] {
+					intersection, ok := h.intersects2DInFuture(adjustedHailstones[0])
+					if !ok {
+						continue calcInter2D
+					}
+					intersections = append(intersections, intersection)
+				}
+				for _, intersection := range intersections[1:] {
+					if different(intersection.position.X, intersections[0].position.X) ||
+						different(intersection.position.Y, intersections[0].position.Y) {
+						continue calcInter2D
+					}
+				}
 
-		A := mat.NewDense(6, 6, []float64{
-			-(h1.velocity.Y - h2.velocity.Y), h1.velocity.X - h2.velocity.X, 0, h1.position.Y - h2.position.Y, -(h1.position.X - h2.position.X), 0,
-			-(h1.velocity.Y - h3.velocity.Y), h1.velocity.X - h3.velocity.X, 0, h1.position.Y - h3.position.Y, -(h1.position.X - h3.position.X), 0,
+				interZs := []float64{}
+				for i, h := range adjustedHailstones[1:] {
+					interZs = append(interZs, h.position.Z+intersections[i].time*h.velocity.Z)
+				}
+				for _, interZ := range interZs[1:] {
+					if different(interZ, interZs[0]) {
+						continue calcInter3D
+					}
+				}
 
-			0, -(h1.velocity.Z - h2.velocity.Z), h1.velocity.Y - h2.velocity.Y, 0, h1.position.Z - h2.position.Z, -(h1.position.Y - h2.position.Y),
-			0, -(h1.velocity.Z - h3.velocity.Z), h1.velocity.Y - h3.velocity.Y, 0, h1.position.Z - h3.position.Z, -(h1.position.Y - h3.position.Y),
-
-			-(h1.velocity.Z - h2.velocity.Z), 0, h1.velocity.X - h2.velocity.X, h1.position.Z - h2.position.Z, 0, -(h1.position.X - h2.position.X),
-			-(h1.velocity.Z - h3.velocity.Z), 0, h1.velocity.X - h3.velocity.X, h1.position.Z - h3.position.Z, 0, -(h1.position.X - h3.position.X),
-		})
-		b := mat.NewVecDense(6, []float64{
-			(h1.position.Y*h1.velocity.X - h2.position.Y*h2.velocity.X) - (h1.position.X*h1.velocity.Y - h2.position.X*h2.velocity.Y),
-			(h1.position.Y*h1.velocity.X - h3.position.Y*h3.velocity.X) - (h1.position.X*h1.velocity.Y - h3.position.X*h3.velocity.Y),
-
-			(h1.position.Z*h1.velocity.Y - h2.position.Z*h2.velocity.Y) - (h1.position.Y*h1.velocity.Z - h2.position.Y*h2.velocity.Z),
-			(h1.position.Z*h1.velocity.Y - h3.position.Z*h3.velocity.Y) - (h1.position.Y*h1.velocity.Z - h3.position.Y*h3.velocity.Z),
-
-			(h1.position.Z*h1.velocity.X - h2.position.Z*h2.velocity.X) - (h1.position.X*h1.velocity.Z - h2.position.X*h2.velocity.Z),
-			(h1.position.Z*h1.velocity.X - h3.position.Z*h3.velocity.X) - (h1.position.X*h1.velocity.Z - h3.position.X*h3.velocity.Z),
-		})
-
-		var rock mat.VecDense
-		if err := rock.SolveVec(A, b); err != nil {
-			fmt.Println(err)
+				rockPosSum = int(intersections[0].position.X + intersections[0].position.Y + interZs[0])
+				break findRockPosition
+			}
 		}
-
-		rockPosSumTotal += rock.At(0, 0) + rock.At(1, 0) + rock.At(2, 0)
 	}
 
-	return validIntersections, int(rockPosSumTotal) / iterations
+	return validIntersections, rockPosSum
 }
 
 func main() {
-	// Iteration count may need fiddling to get exact value
-	validIntersections, rockPosSum := getHailstoneIntersections("24/input.txt", 25)
+	validIntersections, rockPosSum := getHailstoneIntersections("24/input.txt")
 	fmt.Print("Part 1 solution: ", validIntersections, "\nPart 2 solution: ", rockPosSum, "\n")
 }

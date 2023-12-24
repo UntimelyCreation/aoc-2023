@@ -1,5 +1,15 @@
 package utils
 
+func Sign(x float64) int {
+	if x < 0 {
+		return -1
+	} else if x == 0 {
+		return 0
+	} else {
+		return 1
+	}
+}
+
 func Mod(a, b int) int {
 	return (a%b + b) % b
 }
