@@ -1,7 +1,5 @@
 package space
 
-type Position struct {
-	X int
-	Y int
-	Z int
+type Position[T comparable] struct {
+	X, Y, Z T
 }

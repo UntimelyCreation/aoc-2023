@@ -12,8 +12,8 @@ import (
 )
 
 type Brick struct {
-	start space.Position
-	end   space.Position
+	start space.Position[int]
+	end   space.Position[int]
 }
 
 func (b Brick) overlaps(o Brick) bool {
@@ -71,12 +71,12 @@ func simulateFallingBricks(path string) (int, int) {
 		sX, _ := strconv.Atoi(start[0])
 		sY, _ := strconv.Atoi(start[1])
 		sZ, _ := strconv.Atoi(start[2])
-		startPos := space.Position{X: sX, Y: sY, Z: sZ}
+		startPos := space.Position[int]{X: sX, Y: sY, Z: sZ}
 
 		eX, _ := strconv.Atoi(end[0])
 		eY, _ := strconv.Atoi(end[1])
 		eZ, _ := strconv.Atoi(end[2])
-		endPos := space.Position{X: eX, Y: eY, Z: eZ}
+		endPos := space.Position[int]{X: eX, Y: eY, Z: eZ}
 
 		bricks = append(bricks, Brick{startPos, endPos})
 	}
